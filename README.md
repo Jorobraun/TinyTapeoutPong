@@ -1,3 +1,3 @@
 # TinyTapeoutPong
 
-Unser mega cooles TinyTakeout-Projekt! Juhu!!!!
+Unser mega cooles TinyTapeout-Projekt! Juhu!!!!
