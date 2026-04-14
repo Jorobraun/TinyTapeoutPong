@@ -1,1 +1,3 @@
 build/
+.venv/
+sim_build/

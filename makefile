@@ -1,0 +1,16 @@
+# AI generated und angepasst
+
+SIM = icarus
+TOPLEVEL_LANG = verilog
+
+# Alle deine Verilog-Dateien
+VERILOG_SOURCES  = $(PWD)/src/hvsync_generator.v
+VERILOG_SOURCES += $(PWD)/src/main.v
+
+# Top-Level Modulname (muss mit dem in deiner .v-Datei übereinstimmen)
+TOPLEVEL = main
+
+# Python-Testbench (ohne .py)
+COCOTB_TEST_MODULES = test.test
+
+include $(shell cocotb-config --makefiles)/Makefile.sim
