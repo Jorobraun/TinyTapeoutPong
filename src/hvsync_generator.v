@@ -10,7 +10,6 @@ To use:
 */
 
 module hvsync_generator(clk, reset, hsync, vsync, display_on, hpos, vpos);
-
   input clk;
   input reset;
   output reg hsync, vsync;

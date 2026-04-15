@@ -1,4 +1,5 @@
-# AI generated und angepasst
+.PHONY: all
+all: wave sim
 
 SIM = icarus
 TOPLEVEL_LANG = verilog
@@ -14,3 +15,6 @@ TOPLEVEL = main
 COCOTB_TEST_MODULES = test.test
 
 include $(shell cocotb-config --makefiles)/Makefile.sim
+
+wave:
+	gtkwave wave.vcd &

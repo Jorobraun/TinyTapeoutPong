@@ -10,8 +10,19 @@ module main (
   input  wire       clk,      // clock
   input  wire       rst_n     // reset_n - low to reset
 );
-    assign uo_out = 8'b0;
-    assign uio_out = 8'b0;
-    assign uio_oe = 8'b0;
+    wire hsync, vsync, display_on;
+    wire [9:0] hpos;
+    wire [9:0] vpos;
+
+    hvsync_generator hvsync_generator (
+        clk, ~rst_n, hsync, vsync, display_on, hpos, vpos
+    );
+
+    assign uo_out = {hsync, 1'b0, 1'b1, 1'b0, vsync, 1'b0, 1'b1, 1'b0};
+
+    initial begin
+    $dumpfile("wave.vcd");
+    $dumpvars(0, main);
+    end
 
 endmodule

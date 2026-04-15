@@ -1,6 +1,7 @@
 import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles
+import debugpy
 
 import os
 import glob
@@ -10,6 +11,11 @@ from PIL import Image, ImageChops
 
 @cocotb.test()
 async def test_project(dut):
+
+    # Wichtig für Debug in VSCode
+    # debugpy.listen(("0.0.0.0", 5678))
+    # print("Warte auf Debugger an Port 5678...")
+    # debugpy.wait_for_client()
 
     # Set clock period to 40 ns (25 MHz)
     CLOCK_PERIOD = 40
@@ -115,7 +121,6 @@ async def test_project(dut):
 
 # @cocotb.test()
 # async def compare_reference(dut):
-
 #     for img in glob.glob("output/frame*.png"):
 #         basename = img.removeprefix("output/")
 #         dut._log.info(f"Comparing {basename} to reference image")

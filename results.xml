@@ -1,8 +1,6 @@
 <testsuites name="results">
   <testsuite name="all" package="all">
-    <property name="random_seed" value="1776153178" />
-    <testcase name="test_project" classname="test.test" file="/home/jorobraun/TinyTapeout/TanyTapeoutPong/test/test.py" lineno="11" time="0.002961397171020508" sim_time_ns="440.0" ratio_time="148578.51702761452">
-      <failure error_type="AssertionError" error_msg="Unexpected hsync pattern&#10;assert 0 == 1" />
-    </testcase>
+    <property name="random_seed" value="1776275559" />
+    <testcase name="test_project" classname="test.test" file="/home/jorobraun/TinyTapeout/TanyTapeoutPong/test/test.py" lineno="12" time="128.38375210762024" sim_time_ns="50400440.0" ratio_time="392576.46838169073" />
   </testsuite>
 </testsuites>
