@@ -7,7 +7,7 @@ import pygame
 import itertools
 from PIL import Image, ImageChops
 
-DEBUG = True
+DEBUG = False
 
 # Set clock period to 40 ns (25 MHz)
 CLOCK_PERIOD = 40
@@ -33,7 +33,6 @@ V_SYNC_START = V_DISPLAY + V_FRONT
 V_SYNC_END = V_SYNC_START + V_SYNC
 V_TOTAL = V_SYNC_END + V_BACK
 
-
 # Palette mapping uo_out values to RGB color
 # uo_out = {hsync, B[0], G[0], R[0], vsync, B[1], G[1], R[1]}
 # Some Optimisation
@@ -56,15 +55,22 @@ async def check_line(dut, expected_vsync) -> None:
         assert vsync == expected_vsync, "Unexpected vsync pattern"
         await ClockCycles(dut.clk, 1)
 
-async def capture_line(dut, framebuffer, offset) -> None:
-    for i in range(H_TOTAL):
-        hsync = int(dut.uo_out.value[7])
-        vsync = int(dut.uo_out.value[3])
-        assert hsync == (0 if H_SYNC_START <= i < H_SYNC_END else 1), "Unexpected hsync pattern"
-        assert vsync == 1, "Unexpected vsync pattern"
-        if i < H_DISPLAY:
+async def capture_line(dut, framebuffer, offset, check_sync) -> None:
+    if check_sync:
+        for i in range(H_TOTAL):
+            hsync = int(dut.uo_out.value[7])
+            vsync = int(dut.uo_out.value[3])
+            assert hsync == (0 if H_SYNC_START <= i < H_SYNC_END else 1), "Unexpected hsync pattern"
+            assert vsync == 1, "Unexpected vsync pattern"
+            if i < H_DISPLAY:
+                framebuffer[offset+3*i:offset+3*i+3] = PALETTE[int(dut.uo_out.value)]
+            await ClockCycles(dut.clk, 1)
+    else: # Small Optimasation
+        for i in range(H_DISPLAY):
             framebuffer[offset+3*i:offset+3*i+3] = PALETTE[int(dut.uo_out.value)]
-        await ClockCycles(dut.clk, 1)
+            await ClockCycles(dut.clk, 1)
+
+        await ClockCycles(dut.clk, H_TOTAL - H_DISPLAY)
 
 async def skip_frame(dut, frame_num) -> None:
     dut._log.info(f"Skipping frame {frame_num}")
@@ -74,7 +80,7 @@ async def capture_frame(dut, frame_num, check_sync=True) -> Image.Image:
     framebuffer = bytearray(V_DISPLAY*H_DISPLAY*3)
     for j in range(V_DISPLAY):
         dut._log.info(f"Frame {frame_num}, line {j} (display)")
-        line = await capture_line(dut, framebuffer, 3*j*H_DISPLAY)
+        line = await capture_line(dut, framebuffer, 3*j*H_DISPLAY, check_sync)
     if check_sync:
         for j in range(j, j+V_FRONT):
             dut._log.info(f"Frame {frame_num}, line {j} (front porch)")
@@ -119,14 +125,13 @@ async def test_project(dut):
     clock_py = pygame.time.Clock()
 
     for i in itertools.count():
+        frame: Image.Image = await capture_frame(dut, i, False)
+        image: pygame.Surface = pygame.image.fromstring(frame.tobytes(), frame.size, frame.mode).convert()
+
         # Eventhandling
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return 0
-
-        frame: Image.Image = await capture_frame(dut, i)
-
-        image: pygame.Surface = pygame.image.fromstring(frame.tobytes(), frame.size, frame.mode).convert()
 
         window.fill(pygame.Color(0, 0, 255))
         window.blit(image, image.get_rect())
