@@ -17,7 +17,6 @@ module main (
   wire [9:0] hpos;
   wire [9:0] vpos;
 
-
   // Hilfszeug für Display berechnung.
   hvsync_generator hvsync_generator (
     clk,

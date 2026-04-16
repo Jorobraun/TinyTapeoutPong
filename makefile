@@ -5,8 +5,10 @@ SIM = icarus
 TOPLEVEL_LANG = verilog
 
 # Alle deine Verilog-Dateien
-VERILOG_SOURCES  = $(PWD)/src/hvsync_generator.v
-VERILOG_SOURCES += $(PWD)/src/main.v
+VERILOG_SOURCES += $(PWD)/src/main.sv
+
+# Ihm sagen wo ich die Datein finde
+COMPILE_ARGS += -I$(PWD)/src
 
 # Top-Level Modulname (muss mit dem in deiner .v-Datei übereinstimmen)
 TOPLEVEL = main

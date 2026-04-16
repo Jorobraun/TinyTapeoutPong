@@ -48,7 +48,7 @@ for r1, r0, g1, g0, b1, b0 in itertools.product(range(2), repeat=6):
 
 
 # Define some functions for capturing lines & frames
-async def check_line(dut, expected_vsync):
+async def check_line(dut, expected_vsync) -> None:
     for i in range(H_TOTAL):
         hsync = int(dut.uo_out.value[7])
         vsync = int(dut.uo_out.value[3])
@@ -56,7 +56,7 @@ async def check_line(dut, expected_vsync):
         assert vsync == expected_vsync, "Unexpected vsync pattern"
         await ClockCycles(dut.clk, 1)
 
-async def capture_line(dut, framebuffer, offset):
+async def capture_line(dut, framebuffer, offset) -> None:
     for i in range(H_TOTAL):
         hsync = int(dut.uo_out.value[7])
         vsync = int(dut.uo_out.value[3])
@@ -66,11 +66,11 @@ async def capture_line(dut, framebuffer, offset):
             framebuffer[offset+3*i:offset+3*i+3] = PALETTE[int(dut.uo_out.value)]
         await ClockCycles(dut.clk, 1)
 
-async def skip_frame(dut, frame_num):
+async def skip_frame(dut, frame_num) -> None:
     dut._log.info(f"Skipping frame {frame_num}")
     await ClockCycles(dut.clk, H_TOTAL*V_TOTAL)
 
-async def capture_frame(dut, frame_num, check_sync=True):
+async def capture_frame(dut, frame_num, check_sync=True) -> Image.Image:
     framebuffer = bytearray(V_DISPLAY*H_DISPLAY*3)
     for j in range(V_DISPLAY):
         dut._log.info(f"Frame {frame_num}, line {j} (display)")
@@ -93,6 +93,8 @@ async def capture_frame(dut, frame_num, check_sync=True):
 
 @cocotb.test()
 async def test_project(dut):
+    print(type(dut))
+
     # Wichtig für Debug in VSCode
     if DEBUG:
         debugpy.listen(("0.0.0.0", 5678))
