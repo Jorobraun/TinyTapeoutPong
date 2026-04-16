@@ -97,6 +97,8 @@ async def capture_frame(dut, frame_num, check_sync=True) -> Image.Image:
     frame = Image.frombytes('RGB', (H_DISPLAY, V_DISPLAY), bytes(framebuffer))
     return frame
 
+async def set_input();
+
 @cocotb.test()
 async def test_project(dut):
     print(type(dut))
