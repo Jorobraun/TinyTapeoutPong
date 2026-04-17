@@ -1,37 +1,17 @@
+import threading
+from typing import Literal
 import cocotb
 from cocotb.clock import Clock
+import cocotb.handle
 from cocotb.triggers import ClockCycles
+
 import debugpy
 import pygame
-
 import itertools
-from PIL import Image, ImageChops
-
-DEBUG = False
-
-# Set clock period to 40 ns (25 MHz)
-CLOCK_PERIOD = 40
-
-# Set VGA timing parameters matching hvsync_generator.v
-H_DISPLAY = 640
-H_FRONT   =  16
-H_SYNC    =  96
-H_BACK    =  48
-V_DISPLAY = 480
-V_FRONT   =  10
-V_SYNC    =   2
-V_BACK    =  33
-
-# Number of frames to capture
-CAPTURE_FRAMES = 3
-
-# Derived constants
-H_SYNC_START = H_DISPLAY + H_FRONT
-H_SYNC_END = H_SYNC_START + H_SYNC
-H_TOTAL = H_SYNC_END + H_BACK
-V_SYNC_START = V_DISPLAY + V_FRONT
-V_SYNC_END = V_SYNC_START + V_SYNC
-V_TOTAL = V_SYNC_END + V_BACK
+import queue
+from PIL import Image
+from test.constants import *
+from test.dut_types import DUT
 
 # Palette mapping uo_out values to RGB color
 # uo_out = {hsync, B[0], G[0], R[0], vsync, B[1], G[1], R[1]}
@@ -47,7 +27,7 @@ for r1, r0, g1, g0, b1, b0 in itertools.product(range(2), repeat=6):
 
 
 # Define some functions for capturing lines & frames
-async def check_line(dut, expected_vsync) -> None:
+async def check_line(dut : DUT, expected_vsync) -> None:
     for i in range(H_TOTAL):
         hsync = int(dut.uo_out.value[7])
         vsync = int(dut.uo_out.value[3])
@@ -55,7 +35,7 @@ async def check_line(dut, expected_vsync) -> None:
         assert vsync == expected_vsync, "Unexpected vsync pattern"
         await ClockCycles(dut.clk, 1)
 
-async def capture_line(dut, framebuffer, offset, check_sync) -> None:
+async def capture_line(dut : DUT, framebuffer, offset, check_sync) -> None:
     if check_sync:
         for i in range(H_TOTAL):
             hsync = int(dut.uo_out.value[7])
@@ -72,11 +52,11 @@ async def capture_line(dut, framebuffer, offset, check_sync) -> None:
 
         await ClockCycles(dut.clk, H_TOTAL - H_DISPLAY)
 
-async def skip_frame(dut, frame_num) -> None:
+async def skip_frame(dut : DUT, frame_num) -> None:
     dut._log.info(f"Skipping frame {frame_num}")
     await ClockCycles(dut.clk, H_TOTAL*V_TOTAL)
 
-async def capture_frame(dut, frame_num, check_sync=True) -> Image.Image:
+async def capture_frame(dut: DUT, frame_num, check_sync=True) -> Image.Image:
     framebuffer = bytearray(V_DISPLAY*H_DISPLAY*3)
     for j in range(V_DISPLAY):
         dut._log.info(f"Frame {frame_num}, line {j} (display)")
@@ -97,11 +77,36 @@ async def capture_frame(dut, frame_num, check_sync=True) -> Image.Image:
     frame = Image.frombytes('RGB', (H_DISPLAY, V_DISPLAY), bytes(framebuffer))
     return frame
 
-async def set_input();
+async def set_inputs(dut: cocotb.handle.HierarchyObject) -> None:
+    keys = pygame.key.get_pressed()
+
+def pygame_thread(bilder: queue.Queue, stop_event: threading.Event) -> None:
+    pygame.init()
+    window: pygame.Surface = pygame.display.set_mode((H_DISPLAY, V_DISPLAY))
+    clock_py = pygame.time.Clock()
+
+    for i in itertools.count():
+        # Eventhandling
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                stop_event.set()
+                pygame.quit()
+                return
+
+        try:
+            image: pygame.Surface = bilder.get_nowait()
+        except queue.Empty:
+            pass
+        else:
+            window.fill(pygame.Color(0, 0, 255))
+            window.blit(image, image.get_rect())
+
+        pygame.display.flip()
+        clock_py.tick(60)
 
 @cocotb.test()
-async def test_project(dut):
-    print(type(dut))
+async def test_project(dut: DUT) -> None:
+    dut._log.info(type(dut.uo_out))
 
     # Wichtig für Debug in VSCode
     if DEBUG:
@@ -122,21 +127,19 @@ async def test_project(dut):
     dut.rst_n.value = 1
     await ClockCycles(dut.clk, 2)
 
-    pygame.init()
-    window: pygame.Surface = pygame.display.set_mode((H_DISPLAY, V_DISPLAY))
-    clock_py = pygame.time.Clock()
+    images = queue.Queue(1)
+    stop_event = threading.Event()
+
+    threading.Thread(target=pygame_thread, args=(images, stop_event,)).start()
 
     for i in itertools.count():
+        await set_inputs(dut)
         frame: Image.Image = await capture_frame(dut, i, False)
-        image: pygame.Surface = pygame.image.fromstring(frame.tobytes(), frame.size, frame.mode).convert()
 
-        # Eventhandling
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                return 0
+        
+        if stop_event.is_set():
+            return
 
-        window.fill(pygame.Color(0, 0, 255))
-        window.blit(image, image.get_rect())
+        image: pygame.Surface = pygame.image.fromstring(frame.tobytes(), frame.size, "RGB").convert()
 
-        pygame.display.flip()
-        clock_py.tick(60)
+        images.put_nowait(image)
