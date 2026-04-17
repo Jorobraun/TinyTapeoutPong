@@ -10,6 +10,7 @@ import pygame
 import itertools
 import queue
 from PIL import Image
+from pygame.key import ScancodeWrapper
 from test.constants import *
 from test.dut_types import DUT
 
@@ -24,7 +25,6 @@ for r1, r0, g1, g0, b1, b0 in itertools.product(range(2), repeat=6):
     color_index = b0<<6|g0<<5|r0<<4|b1<<2|g1<<1|r1<<0
     for sync_bits in (0x00, 0x08, 0x80, 0x88):
         PALETTE[color_index | sync_bits] = bytes((red, green, blue))
-
 
 # Define some functions for capturing lines & frames
 async def check_line(dut : DUT, expected_vsync) -> None:
@@ -59,8 +59,8 @@ async def skip_frame(dut : DUT, frame_num) -> None:
 async def capture_frame(dut: DUT, frame_num, check_sync=True) -> Image.Image:
     framebuffer = bytearray(V_DISPLAY*H_DISPLAY*3)
     for j in range(V_DISPLAY):
-        dut._log.info(f"Frame {frame_num}, line {j} (display)")
-        line = await capture_line(dut, framebuffer, 3*j*H_DISPLAY, check_sync)
+        await capture_line(dut, framebuffer, 3*j*H_DISPLAY, check_sync)
+
     if check_sync:
         for j in range(j, j+V_FRONT):
             dut._log.info(f"Frame {frame_num}, line {j} (front porch)")
@@ -72,13 +72,20 @@ async def capture_frame(dut: DUT, frame_num, check_sync=True) -> Image.Image:
             dut._log.info(f"Frame {frame_num}, line {j} (back porch)")
             await check_line(dut, 1)
     else:
-        dut._log.info(f"Frame {frame_num}, skipping non-display lines")
+        # dut._log.info(f"Frame {frame_num}, skipping non-display lines")
         await ClockCycles(dut.clk, H_TOTAL*(V_TOTAL-V_DISPLAY))
-    frame = Image.frombytes('RGB', (H_DISPLAY, V_DISPLAY), bytes(framebuffer))
+
+    frame: Image.Image = Image.frombytes('RGB', (H_DISPLAY, V_DISPLAY), bytes(framebuffer))
+
     return frame
 
-async def set_inputs(dut: cocotb.handle.HierarchyObject) -> None:
-    keys = pygame.key.get_pressed()
+async def set_inputs(dut: DUT) -> None:
+    keys: ScancodeWrapper = pygame.key.get_pressed()
+
+    dut.ui_in.value[0] = keys[pygame.K_a]
+    dut.ui_in.value[1] = keys[pygame.K_d]
+    dut.ui_in.value[2] = keys[pygame.K_j]
+    dut.ui_in.value[3] = keys[pygame.K_l]
 
 def pygame_thread(bilder: queue.Queue, stop_event: threading.Event) -> None:
     pygame.init()
@@ -106,8 +113,6 @@ def pygame_thread(bilder: queue.Queue, stop_event: threading.Event) -> None:
 
 @cocotb.test()
 async def test_project(dut: DUT) -> None:
-    dut._log.info(type(dut.uo_out))
-
     # Wichtig für Debug in VSCode
     if DEBUG:
         debugpy.listen(("0.0.0.0", 5678))
@@ -127,16 +132,16 @@ async def test_project(dut: DUT) -> None:
     dut.rst_n.value = 1
     await ClockCycles(dut.clk, 2)
 
-    images = queue.Queue(1)
+    images: queue.Queue[pygame.Surface] = queue.Queue(1)
     stop_event = threading.Event()
 
     threading.Thread(target=pygame_thread, args=(images, stop_event,)).start()
 
     for i in itertools.count():
         await set_inputs(dut)
-        frame: Image.Image = await capture_frame(dut, i, False)
 
-        
+        dut._log.info(f"Capturing Frame {i}!")
+        frame: Image.Image = await capture_frame(dut, i, False)
         if stop_event.is_set():
             return
 

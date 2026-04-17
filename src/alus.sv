@@ -1,51 +1,5 @@
-`timescale 1ns / 1ps
-
-module sr_latch (
-  input  in_set,
-  input  in_reset,
-  output out
-);
-  wire out_r;
-
-  nand g1 (out, in_set, out_r);
-  nand g2 (out_r, in_reset, out);
-endmodule
-
-module D_sr_latch (
-  input  in,
-  input  clock,
-  output out
-);
-
-  sr_latch l1 (
-    .in_set(~(clock & in)),
-    .in_reset(~(clock & ~in)),
-    .out(out)
-  );
-
-endmodule
-
-module D_Flip_Flop (
-  input  in,
-  input  clock,
-  output out
-);
-
-  wire between;
-
-  D_sr_latch d_SR_Latch1 (
-    .in   (in),
-    .clock(~clock),
-    .out  (between)
-  );
-
-  D_sr_latch d_SR_Latch2 (
-    .in   (between),
-    .clock(clock),
-    .out  (out)
-  );
-
-endmodule
+`ifndef ALUS_H
+`define ALUS_H
 
 module Adder (
   input in1,
@@ -58,7 +12,6 @@ module Adder (
 
   assign res  = in1 ^ in2 ^ cin;
   assign cres = (in1 & in2) | (in1 & cin) | (in2 & cin);
-
 endmodule
 
 module ByteSpeicher (
@@ -67,9 +20,8 @@ module ByteSpeicher (
   output [7:0] out
 );
 
-  genvar i;
   generate
-    for (i = 0; i < 8; i = i + 1) begin : gen_memory
+    for (genvar i = 0; i < 8; i = i + 1) begin : gen_memory
       D_Flip_Flop memory_cell (
         .in   (set[i]),
         .clock(clock),
@@ -188,3 +140,5 @@ module test;
   end
 
 endmodule
+
+`endif

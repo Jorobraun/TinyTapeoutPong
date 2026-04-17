@@ -1,6 +1,8 @@
 `default_nettype none
 
 `include "hvsync_generator.sv"
+`include "alus.sv"
+`include "fliplflops.sv"
 
 module main (
   // Diese Sachen werden wie Python File gesteuert.

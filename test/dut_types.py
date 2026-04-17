@@ -5,8 +5,8 @@ from cocotb.handle import LogicObject, LogicArrayObject
 
 class DUT(HierarchyObject):
     ena: LogicObject
-    ui_in: LogicObject
-    uio_in: LogicObject
+    ui_in: LogicArrayObject
+    uio_in: LogicArrayObject
     uo_out: LogicArrayObject
     rst_n: LogicObject
     clk: LogicObject
