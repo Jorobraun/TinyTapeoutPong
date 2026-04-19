@@ -1,21 +1,19 @@
-
 DEBUG = False
+SCALE = 10
+MAX_FPS = 60
 
 # Set clock period to 40 ns (25 MHz)
 CLOCK_PERIOD = 40
 
 # Set VGA timing parameters matching hvsync_generator.v
-H_DISPLAY = 640
-H_FRONT   =  16
-H_SYNC    =  96
-H_BACK    =  48
-V_DISPLAY = 480
-V_FRONT   =  10
-V_SYNC    =   2
-V_BACK    =  33
-
-# Number of frames to capture
-CAPTURE_FRAMES = 3
+H_DISPLAY = 96 # 640
+H_FRONT   =  0 # 16
+H_SYNC    =  0 # 96
+H_BACK    = 0 # 48
+V_DISPLAY = 64 #480
+V_FRONT   =  0 #10
+V_SYNC    =   0 # 2
+V_BACK    =  0 # 33
 
 # Derived constants
 H_SYNC_START = H_DISPLAY + H_FRONT

@@ -1,5 +1,5 @@
 .PHONY: all
-all: wave sim
+all: sim
 
 SIM = icarus
 TOPLEVEL_LANG = verilog

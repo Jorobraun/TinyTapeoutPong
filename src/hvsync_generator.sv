@@ -10,32 +10,27 @@ To use:
 */
 
 module hvsync_generator (
-  clk,
-  reset,
-  hsync,
-  vsync,
-  display_on,
-  hpos,
-  vpos
+  input wire clk,
+  input wire reset,
+  output reg hsync,
+  output reg vsync,
+  output wire display_on,
+  output reg [9:0] hpos,
+  output reg [9:0] vpos,
+  output wire frame_tick
 );
-  input clk;
-  input reset;
-  output reg hsync, vsync;
-  output display_on;
-  output reg [9:0] hpos;
-  output reg [9:0] vpos;
 
   // declarations for TV-simulator sync parameters
   // horizontal constants
-  parameter H_DISPLAY = 640;  // horizontal display width
-  parameter H_BACK = 48;  // horizontal left border (back porch)
-  parameter H_FRONT = 16;  // horizontal right border (front porch)
-  parameter H_SYNC = 96;  // horizontal sync width
+  parameter H_DISPLAY = 96;  // 640;  // horizontal display width
+  parameter H_BACK = 0;  // 48;  // horizontal left border (back porch)
+  parameter H_FRONT = 0;  // 16;  // horizontal right border (front porch)
+  parameter H_SYNC = 0;  // 96;  // horizontal sync width
   // vertical constants
-  parameter V_DISPLAY = 480;  // vertical display height
-  parameter V_TOP = 33;  // vertical top border
-  parameter V_BOTTOM = 10;  // vertical bottom border
-  parameter V_SYNC = 2;  // vertical sync # lines
+  parameter V_DISPLAY = 64;  // 480;  // vertical display height
+  parameter V_TOP = 0;  // 33;  // vertical top border
+  parameter V_BOTTOM = 0;  // 10;  // vertical bottom border
+  parameter V_SYNC = 0;  // 2;  // vertical sync # lines
   // derived constants
   parameter H_SYNC_START = H_DISPLAY + H_FRONT;
   parameter H_SYNC_END = H_DISPLAY + H_FRONT + H_SYNC - 1;
@@ -46,6 +41,7 @@ module hvsync_generator (
 
   wire hmaxxed = (hpos == H_MAX) || reset;  // set when hpos is maximum
   wire vmaxxed = (vpos == V_MAX) || reset;  // set when vpos is maximum
+  assign frame_tick = (hpos == 0 && vpos == 0);
 
   // horizontal position counter
   always @(posedge clk) begin

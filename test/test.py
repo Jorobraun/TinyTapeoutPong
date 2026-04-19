@@ -1,10 +1,7 @@
 import threading
-from typing import Literal
 import cocotb
 from cocotb.clock import Clock
-import cocotb.handle
 from cocotb.triggers import ClockCycles
-
 import debugpy
 import pygame
 import itertools
@@ -89,7 +86,7 @@ async def set_inputs(dut: DUT) -> None:
 
 def pygame_thread(bilder: queue.Queue, stop_event: threading.Event) -> None:
     pygame.init()
-    window: pygame.Surface = pygame.display.set_mode((H_DISPLAY, V_DISPLAY))
+    window: pygame.Surface = pygame.display.set_mode((H_DISPLAY * SCALE, V_DISPLAY * SCALE))
     clock_py = pygame.time.Clock()
 
     for i in itertools.count():
@@ -106,10 +103,11 @@ def pygame_thread(bilder: queue.Queue, stop_event: threading.Event) -> None:
             pass
         else:
             window.fill(pygame.Color(0, 0, 255))
-            window.blit(image, image.get_rect())
+            scaled_image = pygame.transform.scale_by(image, SCALE)
+            window.blit(scaled_image, (0, 0))
 
         pygame.display.flip()
-        clock_py.tick(60)
+        clock_py.tick(MAX_FPS)
 
 @cocotb.test()
 async def test_project(dut: DUT) -> None:
