@@ -4,24 +4,101 @@
 `include "alus.sv"
 `include "fliplflops.sv"
 
-module Pong (
+module Schlaeger (
   input wire clk,
   input wire frame_tick,
   input wire reset,
-  input wire [9:0] xpos,
-  input wire [9:0] ypos,
+  input wire move_down,
+  input wire move_up,
+  output reg [5:0] pos
+);
+  always @(posedge clk) begin
+    if (reset) begin
+      pos <= 32;
+    end
+    if (frame_tick) begin
+      if (move_down) begin
+        pos <= pos - 1;
+      end
+      if (move_up) begin
+        pos <= pos + 1;
+      end
+    end
+  end
+endmodule
+
+module Schlaeger_collide (
+  input wire [5:0] pos,
+  input wire [5:0] mesure_pos,
+  output wire res
+);
+  assign res = pos == mesure_pos;
+endmodule
+
+module Pong #(
+  parameter [6:0] player1_schlaeger_pos = 10,
+  parameter [6:0] player2_schlaeger_pos = 80
+) (
+  input wire clk,
+  input wire frame_tick,
+  input wire reset,
+  input wire player1_down,
+  input wire player2_down,
+  input wire player1_up,
+  input wire player2_up,
+  input wire [6:0] xpos,
+  input wire [5:0] ypos,
   output wire [1:0] red,
   output wire [1:0] green,
   output wire [1:0] blue
 );
+  wire [5:0] player1_pos;
+  wire [5:0] player2_pos;
+
+  wire collides_player1;
+  wire collides_player2;
+
+  Schlaeger schlaeger1 (
+    .clk       (clk),
+    .reset     (reset),
+    .frame_tick(frame_tick),
+    .move_down (player1_down),
+    .move_up   (player1_up),
+    .pos       (player1_pos)
+  );
+
+  Schlaeger schlaeger2 (
+    .clk       (clk),
+    .reset     (reset),
+    .frame_tick(frame_tick),
+    .move_down (player2_down),
+    .move_up   (player2_up),
+    .pos       (player2_pos)
+  );
+
+  Schlaeger_collide schlaeger_collide1 (
+    .pos       (player1_pos),
+    .mesure_pos(ypos),
+    .res       (collides_player1)
+  );
+
+  Schlaeger_collide schlaeger_collide2 (
+    .pos       (player2_pos),
+    .mesure_pos(ypos),
+    .res       (collides_player2)
+  );
+
   reg [6:0] ball_x_pos;
   reg [5:0] ball_y_pos;
 
-  wire coll = (xpos == ball_x_pos) && (ypos == ball_y_pos);
+  wire coll_ball = (xpos == ball_x_pos) && (ypos == ball_y_pos);
+  wire is_white = coll_ball || ((xpos == player1_schlaeger_pos) && collides_player1) 
+                            || ((xpos == player2_schlaeger_pos) && collides_player2);
 
-  assign red   = coll ? 2'b11 : 2'b00;
-  assign green = coll ? 2'b11 : 2'b00;
-  assign blue  = coll ? 2'b11 : 2'b00;
+  // Ball
+  assign red   = is_white ? 2'b11 : 2'b00;
+  assign green = is_white ? 2'b11 : 2'b00;
+  assign blue  = is_white ? 2'b11 : 2'b00;
 
   always @(posedge clk) begin
     if (frame_tick) begin
@@ -48,8 +125,8 @@ module main (
   input  wire       rst_n     // reset_n - low to reset
 );
   wire hsync, vsync, display_on, frame_tick;
-  wire [9:0] hpos;
-  wire [9:0] vpos;
+  wire [6:0] hpos;
+  wire [5:0] vpos;
 
   // Hilfszeug für Display berechnung.
   hvsync_generator hvsync_generator (
@@ -72,8 +149,12 @@ module main (
     clk,
     frame_tick,
     ~rst_n,
-    vpos,
+    ui_in[0],
+    ui_in[2],
+    ui_in[1],
+    ui_in[3],
     hpos,
+    vpos,
     {uo_out[0], uo_out[4]},
     {uo_out[1], uo_out[5]},
     {uo_out[2], uo_out[6]}

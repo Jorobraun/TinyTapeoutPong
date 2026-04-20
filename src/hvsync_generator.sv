@@ -15,8 +15,8 @@ module hvsync_generator (
   output reg hsync,
   output reg vsync,
   output wire display_on,
-  output reg [9:0] hpos,
-  output reg [9:0] vpos,
+  output reg [6:0] hpos,
+  output reg [5:0] vpos,
   output wire frame_tick
 );
 

@@ -79,10 +79,21 @@ async def capture_frame(dut: DUT, frame_num, check_sync=True) -> Image.Image:
 async def set_inputs(dut: DUT) -> None:
     keys: ScancodeWrapper = pygame.key.get_pressed()
 
-    dut.ui_in.value[0] = keys[pygame.K_a]
-    dut.ui_in.value[1] = keys[pygame.K_d]
-    dut.ui_in.value[2] = keys[pygame.K_j]
-    dut.ui_in.value[3] = keys[pygame.K_l]
+    key_effect: dict[int, int] = {
+        pygame.K_a : 0,
+        pygame.K_d : 1,
+        pygame.K_j : 2,
+        pygame.K_l : 3
+    }
+
+    value = 0
+    for key, bit in key_effect.items():
+        if keys[key]:
+            value |= (1 << bit)
+            dut._log.info(f"Set bit: {bit}")
+
+    dut.ui_in.value = value
+    dut._log.info(f"dut.ui_in.value: {dut.ui_in.value}")
 
 def pygame_thread(bilder: queue.Queue, stop_event: threading.Event) -> None:
     pygame.init()
