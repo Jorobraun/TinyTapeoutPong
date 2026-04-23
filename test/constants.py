@@ -1,4 +1,4 @@
-DEBUG = True
+DEBUG = False
 SCALE = 10
 MAX_FPS = 60
 
