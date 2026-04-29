@@ -163,6 +163,7 @@ module Pong #(
       
       currentpatternindex <= currentpatternindex + 1; 
       
+      
       if (ball_x_pos >= 95 || ball_x_pos <= 1) begin //check if hit end wall
         // Score Logic for P1
         if (ball_x_pos >=  95) begin
