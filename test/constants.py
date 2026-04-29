@@ -6,11 +6,11 @@ MAX_FPS = 60
 CLOCK_PERIOD = 40
 
 # Set VGA timing parameters matching hvsync_generator.v
-H_DISPLAY = 96 # 640
+H_DISPLAY = 64 # 640
 H_FRONT   =  0 # 16
 H_SYNC    =  0 # 96
 H_BACK    = 0 # 48
-V_DISPLAY = 64 #480
+V_DISPLAY = 48 #480
 V_FRONT   =  0 #10
 V_SYNC    =   0 # 2
 V_BACK    =  0 # 33

@@ -2,6 +2,10 @@
 
 `include "hvsync_generator.sv"
 
+
+parameter H_DISPLAY = 64;
+parameter V_DISPLAY = 48; 
+
 module Digit_Renderer (
   input wire [3:0] value,
   input wire [6:0] x_offset,
@@ -48,9 +52,9 @@ module Schlaeger (
   output reg [5:0] pos
 );
   always @(posedge clk) begin
-    if (reset) pos <= 28;
+    if (reset) pos <= V_DISPLAY /2 -4;
     else if (frame_tick) begin
-      if (move_down && (pos < 55)) pos <= pos + 1;
+      if (move_down && (pos < V_DISPLAY-9)) pos <= pos + 1;
       if (move_up && (pos > 0)) pos <= pos - 1;
     end
   end
@@ -66,7 +70,7 @@ endmodule
 
 module Pong #(
   parameter [6:0] player1_schlaeger_x = 10,
-  parameter [6:0] player2_schlaeger_x = 85
+  parameter [6:0] player2_schlaeger_x = H_DISPLAY - 11
 ) (
   input wire clk,
   input wire frame_tick,
@@ -153,8 +157,8 @@ module Pong #(
       currentpatternindex = 0; 
       xpattern = pattern4x;
       ypattern = pattern4y;
-      ball_x_pos <= 48;
-      ball_y_pos <= 32;
+      ball_x_pos <= H_DISPLAY/2;
+      ball_y_pos <= V_DISPLAY/2;
       ball_x_dir <= 0;
       ball_y_dir <= 1;
       scoreP1 <= 8'h00;
@@ -164,9 +168,9 @@ module Pong #(
       currentpatternindex <= currentpatternindex + 1; 
       
       
-      if (ball_x_pos >= 95 || ball_x_pos <= 1) begin //check if hit end wall
+      if (ball_x_pos >= H_DISPLAY-1 || ball_x_pos <= 1) begin //check if hit end wall
         // Score Logic for P1
-        if (ball_x_pos >=  95) begin
+        if (ball_x_pos >=  H_DISPLAY-1) begin
           if (scoreP1[3:0] == 4'd9) begin
             scoreP1[3:0] <= 4'd0;
             scoreP1[7:4] <= (scoreP1[7:4] == 4'd9) ? 4'd0 : scoreP1[7:4] + 1'b1;
@@ -179,8 +183,8 @@ module Pong #(
           end else scoreP2[3:0] <= scoreP2[3:0] + 1'b1;
         end
 
-        ball_x_pos <= 48;
-        ball_y_pos <= 32;
+        ball_x_pos <= H_DISPLAY/2;
+        ball_y_pos <= V_DISPLAY/2;
         ball_x_dir <= ~ball_x_dir;
       end else begin
         if (ball_y_pos == 0 && ball_y_dir == 1) begin // check if top intersection
@@ -204,7 +208,7 @@ module Pong #(
 
           end
           
-        end else if (ball_y_pos == 63 && ball_y_dir == 0) begin
+        end else if (ball_y_pos == V_DISPLAY-1 && ball_y_dir == 0) begin
           ball_y_dir <= 1;
 
           
@@ -286,39 +290,39 @@ module Pong #(
 
   // Score Rendering 
   wire d1t, d1o, d2t, d2o;
+
+  localparam SCORE_Y  = 5;
+  localparam GAP      = 4; 
+  
+  localparam P1_CENTER_X = (H_DISPLAY / 4);     
+  localparam P2_CENTER_X = (H_DISPLAY * 3 / 4); 
+
   // Player 1 (Red) 
   Digit_Renderer p1t (
     .value(scoreP1[7:4]),
-    .x_offset(7'd22),
-    .y_offset(6'd5),
-    .xpos(xpos),
-    .ypos(ypos),
-    .draw(d1t)
+    .x_offset(P1_CENTER_X - GAP - 3),
+    .y_offset(SCORE_Y),
+    .xpos(xpos), .ypos(ypos), .draw(d1t)
   );
   Digit_Renderer p1o (
     .value(scoreP1[3:0]),
-    .x_offset(7'd30),
-    .y_offset(6'd5),
-    .xpos(xpos),
-    .ypos(ypos),
-    .draw(d1o)
+    .x_offset(P1_CENTER_X + GAP - 3), 
+    .y_offset(SCORE_Y),
+    .xpos(xpos), .ypos(ypos), .draw(d1o)
   );
+
   // Player 2 (Green) 
   Digit_Renderer p2t (
     .value(scoreP2[7:4]),
-    .x_offset(7'd60),
-    .y_offset(6'd5),
-    .xpos(xpos),
-    .ypos(ypos),
-    .draw(d2t)
+    .x_offset(P2_CENTER_X - GAP - 3), 
+    .y_offset(SCORE_Y),
+    .xpos(xpos), .ypos(ypos), .draw(d2t)
   );
   Digit_Renderer p2o (
     .value(scoreP2[3:0]),
-    .x_offset(7'd68),
-    .y_offset(6'd5),
-    .xpos(xpos),
-    .ypos(ypos),
-    .draw(d2o)
+    .x_offset(P2_CENTER_X + GAP - 3), 
+    .y_offset(SCORE_Y),
+    .xpos(xpos), .ypos(ypos), .draw(d2o)
   );
 
   // Game Rendering
