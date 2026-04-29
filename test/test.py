@@ -38,13 +38,17 @@ async def capture_frame(dut: DUT, frame_num, check_sync=True) -> Image.Image:
 async def set_inputs(dut: DUT) -> None:
     # This call will now work because pygame.init() happened in the main thread
     pygame.event.pump() # Process internal pygame events
+    
+    # Get all the keys wich are pressed;
     keys: ScancodeWrapper = pygame.key.get_pressed()
 
+    # Key to wire dict.
     key_effect: dict[int, int] = {
         pygame.K_a : 0, pygame.K_d : 1,
         pygame.K_j : 2, pygame.K_l : 3
     }
 
+    # Setting the correspanding Wires according to the keys wich are pressed
     value = 0
     for key, bit in key_effect.items():
         if keys[key]:

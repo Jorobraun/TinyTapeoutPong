@@ -117,8 +117,6 @@ module Pong #(
   );
 
   reg ball_x_dir, ball_y_dir;
-
-
   reg [7:0] scoreP1, scoreP2;
 
   always @(posedge clk) begin
