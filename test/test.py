@@ -11,7 +11,6 @@ from pygame.key import ScancodeWrapper
 from test.constants import *
 from test.dut_types import DUT
 
-# Palette mapping remains unchanged
 PALETTE = [bytes(3)] * 256
 for r1, r0, g1, g0, b1, b0 in itertools.product(range(2), repeat=6):
     red = 170*r1 + 85*r0
@@ -36,13 +35,12 @@ async def capture_frame(dut: DUT, frame_num, check_sync=True) -> Image.Image:
     return Image.frombytes('RGB', (H_DISPLAY, V_DISPLAY), bytes(framebuffer))
 
 async def set_inputs(dut: DUT) -> None:
-    # This call will now work because pygame.init() happened in the main thread
-    pygame.event.pump() # Process internal pygame events
+    pygame.event.pump() 
     keys: ScancodeWrapper = pygame.key.get_pressed()
 
     key_effect: dict[int, int] = {
-        pygame.K_a : 0, pygame.K_d : 1,
-        pygame.K_j : 2, pygame.K_l : 3
+        pygame.K_s : 0, pygame.K_w : 1,
+        pygame.K_DOWN : 2, pygame.K_UP : 3
     }
 
     value = 0
@@ -53,13 +51,11 @@ async def set_inputs(dut: DUT) -> None:
     dut.ui_in.value = value
 
 def pygame_thread(images_queue: queue.Queue, stop_event: threading.Event) -> None:
-    """ This thread now ONLY handles rendering the window surface. """
     window: pygame.Surface = pygame.display.set_mode((H_DISPLAY * SCALE, V_DISPLAY * SCALE))
     pygame.display.set_caption("Tiny Tapeout Pong")
     clock_py = pygame.time.Clock()
 
     while not stop_event.is_set():
-        # Handle Window Close event in the UI thread
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 stop_event.set()
@@ -78,10 +74,7 @@ def pygame_thread(images_queue: queue.Queue, stop_event: threading.Event) -> Non
 
 @cocotb.test()
 async def test_project(dut: DUT) -> None:
-    # --- STEP 1: INITIALIZE PYGAME IN MAIN CONTEXT ---
     pygame.init()
-    # -------------------------------------------------
-
     if DEBUG:
         debugpy.listen(("0.0.0.0", 5678))
         print("Warte auf Debugger an Port 5678...")
@@ -116,7 +109,6 @@ async def test_project(dut: DUT) -> None:
             if stop_event.is_set():
                 break
 
-            # Convert PIL image to Pygame surface and send to UI thread
             img_surface: pygame.Surface = pygame.image.fromstring(
                 frame.tobytes(), frame.size, "RGB"
             ).convert()
@@ -124,7 +116,7 @@ async def test_project(dut: DUT) -> None:
             try:
                 images_queue.put_nowait(img_surface)
             except queue.Full:
-                pass # Skip frame if UI thread is busy
+                pass 
 
     finally:
         stop_event.set()

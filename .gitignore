@@ -5,3 +5,4 @@ sim_build/
 wave.vcd
 results.xml
 test/__pycache__/
+venv/
