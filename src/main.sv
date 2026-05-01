@@ -2,6 +2,10 @@
 
 `include "hvsync_generator.sv"
 
+
+parameter H_DISPLAY = 64;
+parameter V_DISPLAY = 48; 
+
 module Digit_Renderer (
   input wire [3:0] value,
   input wire [6:0] x_offset,
@@ -48,9 +52,9 @@ module Schlaeger (
   output reg [5:0] pos
 );
   always @(posedge clk) begin
-    if (reset) pos <= 32;
+    if (reset) pos <= V_DISPLAY /2 -4;
     else if (frame_tick) begin
-      if (move_down && (pos < 55)) pos <= pos + 1;
+      if (move_down && (pos < V_DISPLAY-9)) pos <= pos + 1;
       if (move_up && (pos > 0)) pos <= pos - 1;
     end
   end
@@ -61,12 +65,12 @@ module Schlaeger_collide (
   input wire [5:0] mesure_pos,
   output wire res
 );
-  assign res = (mesure_pos >= pos) && (mesure_pos < pos + 6'd9);
+  assign res = (mesure_pos >= pos) && ({1'b0, mesure_pos} < ({1'b0, pos} + 7'd9));
 endmodule
 
 module Pong #(
   parameter [6:0] player1_schlaeger_x = 10,
-  parameter [6:0] player2_schlaeger_x = 85
+  parameter [6:0] player2_schlaeger_x = H_DISPLAY - 11
 ) (
   input wire clk,
   input wire frame_tick,
@@ -117,20 +121,56 @@ module Pong #(
   );
 
   reg ball_x_dir, ball_y_dir;
+  reg [7:0] xpattern = 8'b11111111,
+   ypattern = 8'b10000010;
+  reg [2:0] currentpatternindex;
+
+
+  parameter [7:0] pattern4x = 8'b11111111;
+  parameter [7:0] pattern4y = 8'b00000000;
+
+  parameter [7:0] pattern35x = 8'b01110111;
+  parameter [7:0] pattern35y = 8'b11001100;
+
+  parameter [7:0] pattern26x = 8'b10101010;
+  parameter [7:0] pattern26y = 8'b10101010;
+
+  parameter [7:0] pattern17x = 8'b10001000;
+  parameter [7:0] pattern17y = 8'b00110011;
+
+  parameter [7:0] pattern08x = 8'b10000000;
+  parameter [7:0] pattern08y = 8'b00010001;
+  
+
+
   reg [7:0] scoreP1, scoreP2;
+  wire [6:0] next_ball_x = ball_x_dir ? (ball_x_pos - xpattern[currentpatternindex]) 
+                                    : (ball_x_pos + xpattern[currentpatternindex]);
+  wire [5:0] next_ball_y = ball_y_dir ? (ball_y_pos - ypattern[currentpatternindex]) 
+                                      : (ball_y_pos + ypattern[currentpatternindex]);
+
+  wire [5:0] next_hit_p1 = next_ball_y - player1_y;
 
   always @(posedge clk) begin
+    
     if (reset) begin
-      ball_x_pos <= 48;
-      ball_y_pos <= 32;
+      currentpatternindex = 0; 
+      xpattern = pattern4x;
+      ypattern = pattern4y;
+      ball_x_pos <= H_DISPLAY/2;
+      ball_y_pos <= V_DISPLAY/2;
       ball_x_dir <= 0;
-      ball_y_dir <= 0;
+      ball_y_dir <= 1;
       scoreP1 <= 8'h00;
       scoreP2 <= 8'h00;
     end else if (frame_tick) begin
-      if (ball_x_pos >= 98 || ball_x_pos <= 1) begin
+      
+      currentpatternindex <= currentpatternindex + 1; 
+      
+      
+      if (ball_x_pos >= H_DISPLAY-1 || ball_x_pos <= 1) begin //check if hit end wall
         // Score Logic for P1
-        if (ball_x_pos >= 98) begin
+        if (ball_x_pos >=  H_DISPLAY-1) begin
           if (scoreP1[3:0] == 4'd9) begin
             scoreP1[3:0] <= 4'd0;
             scoreP1[7:4] <= (scoreP1[7:4] == 4'd9) ? 4'd0 : scoreP1[7:4] + 1'b1;
@@ -143,64 +183,146 @@ module Pong #(
           end else scoreP2[3:0] <= scoreP2[3:0] + 1'b1;
         end
 
-        ball_x_pos <= 48;
-        ball_y_pos <= 32;
+        ball_x_pos <= H_DISPLAY/2;
+        ball_y_pos <= V_DISPLAY/2;
         ball_x_dir <= ~ball_x_dir;
       end else begin
-        if (ball_y_pos == 0) begin
-          ball_y_dir <= 0;
-          ball_y_pos <= 1;
-        end else if (ball_y_pos == 63) begin
-          ball_y_dir <= 1;
-          ball_y_pos <= 62;
-        end else ball_y_pos <= ball_y_dir ? (ball_y_pos - 1'b1) : (ball_y_pos + 1'b1);
+        if (ball_y_pos == 0 && ball_y_dir == 1) begin // check if top intersection
+          ball_y_dir <= 0; //change move direction away from top
+          
+          if ((next_ball_x == player1_schlaeger_x && ball_hits_p1_y) || 
+              (next_ball_x == player2_schlaeger_x && ball_hits_p2_y)) begin
+            ball_x_dir <= ~ball_x_dir;
+            xpattern <= pattern26x;
+            ypattern <= pattern26y;
+            currentpatternindex <= 1;
+            ball_y_pos <= ball_y_pos + 1'b1;
+            ball_x_pos <= ball_x_dir ? (ball_x_pos + 1'b1) : (ball_x_pos - 1'b1);
+          end else begin
+            if (xpattern[currentpatternindex]) begin
+            ball_x_pos <= ball_x_dir ? (ball_x_pos - 1'b1) : (ball_x_pos + 1'b1);
+            if (ypattern[currentpatternindex]) begin
+            ball_y_pos <= (ball_y_pos + 1'b1);
+          end
+          end
 
-        if (ball_x_dir == 1 && ball_x_pos == player1_schlaeger_x + 1'b1 && ball_hits_p1_y) begin
-          ball_x_dir <= 0;
-          ball_x_pos <= player1_schlaeger_x + 2;
-        end else if (ball_x_dir == 0 && ball_x_pos == player2_schlaeger_x - 1'b1 && ball_hits_p2_y) begin
-          ball_x_dir <= 1;
-          ball_x_pos <= player2_schlaeger_x - 2;
-        end else ball_x_pos <= ball_x_dir ? (ball_x_pos - 1'b1) : (ball_x_pos + 1'b1);
+          end
+          
+        end else if (ball_y_pos == V_DISPLAY-1 && ball_y_dir == 0) begin
+          ball_y_dir <= 1;
+
+          
+          if ((next_ball_x == player1_schlaeger_x && ball_hits_p1_y) || 
+              (next_ball_x == player2_schlaeger_x && ball_hits_p2_y)) begin
+            ball_x_dir <= ~ball_x_dir;
+            xpattern <= pattern26x;
+            ypattern <= pattern26y;
+            currentpatternindex <= 1;
+            ball_y_pos <= ball_y_pos - 1'b1;
+            ball_x_pos <= ball_x_dir ? (ball_x_pos + 1'b1) : (ball_x_pos - 1'b1);
+          end else begin
+            if (xpattern[currentpatternindex]) begin
+            ball_x_pos <= ball_x_dir ? (ball_x_pos - 1'b1) : (ball_x_pos + 1'b1);
+            if (ypattern[currentpatternindex]) begin
+            ball_y_pos <= (ball_y_pos - 1'b1);
+          end
+
+          end
+          
+          end
+      end
+
+
+      else if (ball_x_dir == 1 && next_ball_x <= player1_schlaeger_x && ball_x_pos > player1_schlaeger_x && next_ball_y >= player1_y && next_ball_y <= (player1_y + 8)) begin 
+        ball_x_dir <= 0; 
+        ball_x_pos <= player1_schlaeger_x + 1;
+        
+        //different velocities and angles based on paddle hit location
+        case (next_hit_p1)
+            6'd0, 6'd8: begin xpattern <= pattern08x; ypattern <= pattern08y; end
+            6'd1, 6'd7: begin xpattern <= pattern17x; ypattern <= pattern17y; end
+            6'd2, 6'd6: begin xpattern <= pattern26x; ypattern <= pattern26y; end
+            6'd3, 6'd5: begin xpattern <= pattern35x; ypattern <= pattern35y; end
+            default:    begin xpattern <= pattern4x;  ypattern <= pattern4y;  end
+        endcase
+
+        // direction based on if hit on top or bottom
+        if (next_hit_p1 < 4) ball_y_dir <= 1; 
+        else if (next_hit_p1 > 4) ball_y_dir <= 0;
+
+        // take first step
+        currentpatternindex <= 1; 
+        ball_y_pos <= (next_hit_p1 < 4) ? (ball_y_pos - ypattern[0]) : (ball_y_pos + ypattern[0]);
+    end
+    else if (ball_x_dir == 0 && next_ball_x >= player2_schlaeger_x && ball_x_pos < player2_schlaeger_x && next_ball_y >= player2_y && next_ball_y <= (player2_y + 8)) begin 
+      ball_x_dir <= 1; // Bounce Left
+      ball_x_pos <= player2_schlaeger_x - 1;
+      
+      // Calculate where on the paddle the ball hit
+      // Using a wire or temp reg for next_hit_p2 would be cleaner, but we can do it inline:
+      case (next_ball_y - player2_y)
+          6'd0, 6'd8: begin xpattern <= pattern08x; ypattern <= pattern08y; end
+          6'd1, 6'd7: begin xpattern <= pattern17x; ypattern <= pattern17y; end
+          6'd2, 6'd6: begin xpattern <= pattern26x; ypattern <= pattern26y; end
+          6'd3, 6'd5: begin xpattern <= pattern35x; ypattern <= pattern35y; end
+          default:    begin xpattern <= pattern4x;  ypattern <= pattern4y;  end
+      endcase
+
+      // Set Y direction: Top of paddle bounces up (1), bottom bounces down (0)
+      if ((next_ball_y - player2_y) < 4) ball_y_dir <= 1; 
+      else if ((next_ball_y - player2_y) > 4) ball_y_dir <= 0;
+
+      // Reset pattern index and take the first step immediately
+      currentpatternindex <= 1; 
+      ball_y_pos <= ((next_ball_y - player2_y) < 4) ? (ball_y_pos - ypattern[0]) : (ball_y_pos + ypattern[0]);
+    end else begin
+        if (xpattern[currentpatternindex]) begin
+          ball_x_pos <= ball_x_dir ? (ball_x_pos - 1'b1) : (ball_x_pos + 1'b1);
+        end
+        if (ypattern[currentpatternindex]) begin
+          ball_y_pos <= ball_y_dir ? (ball_y_pos - 1'b1) : (ball_y_pos + 1'b1);
+        end
+        end
+
       end
     end
   end
 
   // Score Rendering 
   wire d1t, d1o, d2t, d2o;
+
+  localparam SCORE_Y  = 5;
+  localparam GAP      = 4; 
+  
+  localparam P1_CENTER_X = (H_DISPLAY / 4);     
+  localparam P2_CENTER_X = (H_DISPLAY * 3 / 4); 
+
   // Player 1 (Red) 
   Digit_Renderer p1t (
     .value(scoreP1[7:4]),
-    .x_offset(7'd22),
-    .y_offset(6'd5),
-    .xpos(xpos),
-    .ypos(ypos),
-    .draw(d1t)
+    .x_offset(P1_CENTER_X - GAP - 3),
+    .y_offset(SCORE_Y),
+    .xpos(xpos), .ypos(ypos), .draw(d1t)
   );
   Digit_Renderer p1o (
     .value(scoreP1[3:0]),
-    .x_offset(7'd30),
-    .y_offset(6'd5),
-    .xpos(xpos),
-    .ypos(ypos),
-    .draw(d1o)
+    .x_offset(P1_CENTER_X + GAP - 3), 
+    .y_offset(SCORE_Y),
+    .xpos(xpos), .ypos(ypos), .draw(d1o)
   );
+
   // Player 2 (Green) 
   Digit_Renderer p2t (
     .value(scoreP2[7:4]),
-    .x_offset(7'd60),
-    .y_offset(6'd5),
-    .xpos(xpos),
-    .ypos(ypos),
-    .draw(d2t)
+    .x_offset(P2_CENTER_X - GAP - 3), 
+    .y_offset(SCORE_Y),
+    .xpos(xpos), .ypos(ypos), .draw(d2t)
   );
   Digit_Renderer p2o (
     .value(scoreP2[3:0]),
-    .x_offset(7'd68),
-    .y_offset(6'd5),
-    .xpos(xpos),
-    .ypos(ypos),
-    .draw(d2o)
+    .x_offset(P2_CENTER_X + GAP - 3), 
+    .y_offset(SCORE_Y),
+    .xpos(xpos), .ypos(ypos), .draw(d2o)
   );
 
   // Game Rendering
